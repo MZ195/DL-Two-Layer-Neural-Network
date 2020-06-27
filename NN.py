@@ -16,107 +16,114 @@ class NeuralNetwork(object):
         self.hidden_nodes = hidden_layer
         self.output_nodes = output_layer
 
+        # activation function
+        self.sigmoid = np.vectorize(lambda x: 1 / (1 + math.exp(-x)))
+        
+        # derivative of activation function
+        self.dsigmoid = np.vectorize(lambda x: x * (1 - x))
+
         self.learning_rate = 0.1
 
+        # the weights of input to hidden layer connections
         self.weights_ih = np.random.uniform(-1, 1, (self.hidden_nodes, self.input_nodes))
+        # the weights of hidden to output layer connections
         self.weights_ho = np.random.uniform(-1, 1, (self.output_nodes, self.hidden_nodes))
 
-
+        # biases of the hidden layer
         self.bias_h = np.random.rand(self.hidden_nodes, 1)
+        # biases of the output layer
         self.bias_o = np.random.rand(self.output_nodes, 1)
 
 
     def feedforward(self, input_array):
 
-        # Generating the hidden layer results
-        local_input = np.asmatrix(input_array)
-        local_input = np.reshape(local_input, (self.input_nodes, 1))
+        # the input is an array, we need to change it into a vector
+        input_vector = np.asmatrix(input_array)
+        input_vector = np.reshape(input_vector, (self.input_nodes, 1))
 
-        hidden = self.weights_ih.dot(local_input)
+        # Generating the hidden layer results
+        hidden = self.weights_ih.dot(input_vector)
         hidden = hidden + self.bias_h
 
-        # Activation function
-        sigmoid = np.vectorize(lambda x: 1 / (1 + math.exp(-x)))
-        hidden = sigmoid(hidden)
-        
+        # run the weighted sums through the activation function
+        hidden = self.sigmoid(hidden)
 
         # Generating the output layer results
         output = self.weights_ho.dot(hidden)
         output = output + self.bias_o
 
-        # Activation function
-        output = sigmoid(output)
+        # run the weighted sums through the activation function
+        output = self.sigmoid(output)
 
-        # send back as array
         return output
 
     def train(self, input_array, answers_array):
-        # Activation function
-        sigmoid = np.vectorize(lambda x: 1 / (1 + math.exp(-x)))
-        # derivative of sigmoid    
-        dsigmoid = np.vectorize(lambda x: x * (1 - x))
 
-
-        local_input = np.asmatrix(input_array)
-        local_input = np.reshape(local_input, (self.input_nodes, 1))
+        # the input is an array, we need to change it into a vector
+        input_vector = np.asmatrix(input_array)
+        input_vector = np.reshape(input_vector, (self.input_nodes, 1))
 
         # Generating the hidden layer results
-        hidden = self.weights_ih.dot(local_input)
+        hidden = self.weights_ih.dot(input_vector)
         hidden = hidden + self.bias_h
-        hidden = sigmoid(hidden)
+        hidden = self.sigmoid(hidden)
         
         # Generating the output layer results
         output = self.weights_ho.dot(hidden)
         output = output + self.bias_o
-        output = sigmoid(output)
+        output = self.sigmoid(output)
 
-        answers_array = np.asmatrix(answers_array)
-        answers_array = np.reshape(answers_array, (self.output_nodes, 1))
+        # the answers is an array, we need to change it into a vector
+        answers_vector = np.asmatrix(answers_array)
+        answers_vector = np.reshape(answers_vector, (self.output_nodes, 1))
 
         # calculate the GENERAL error
-        output_errors = answers_array - output
+        output_errors = answers_vector - output
 
-        #calculate output gradient
+        # calculate output gradient
         # Formula: LR * E * d(final_output) . hidden_layer_values_transposed
-        derivative_output = dsigmoid(output)
+        derivative_output = self.dsigmoid(output)
+        
         # Element-wise multiplcation
         weights_gradient = np.multiply(derivative_output, output_errors)
-        hidden_t = hidden.transpose()
         weights_gradient = weights_gradient * self.learning_rate
-        weights_ho_deltas = weights_gradient.dot(hidden_t)
 
+        hidden_t = hidden.transpose()
+        weights_ho_deltas = weights_gradient.dot(hidden_t)
+        
         # adjust the weights
         self.weights_ho = self.weights_ho + weights_ho_deltas
         self.bias_o = self.bias_o + weights_gradient
 
-######################################################################################################
-        #WOKING ON HIDDEN LAYERS
-
-        # Calculate hidden gradient
+        # calculate the hidden layer error
         weights_ho_t = self.weights_ho.transpose()
         hidden_errors = weights_ho_t.dot(output_errors)
-        derivative_output = dsigmoid(hidden)
+
+        # Calculate hidden gradient
+        # Formula: LR * E * d(final_output) . hidden_layer_values_transposed
+        derivative_output = self.dsigmoid(hidden)
 
         # Element-wise multiplcation
         hidden_gradient = np.multiply(derivative_output, hidden_errors)
-        inputs_t = local_input.transpose()
         hidden_gradient = hidden_gradient * self.learning_rate
+        
+        inputs_t = input_vector.transpose()
         weights_ih_deltas = hidden_gradient.dot(inputs_t)
 
         # adjust input -> hidden weights
-        print(self.weights_ih)
         self.weights_ih = self.weights_ih + weights_ih_deltas
         self.bias_h = self.bias_h + hidden_gradient
-        print(self.weights_ih)
-
-        print('\n')
+  
 
 if __name__ == "__main__":
-    nn = NeuralNetwork(2, 2, 1)
+    nn = NeuralNetwork(2, 4, 1)
 
-
-    for i in range(10):
+    # train the neural network 10,000 times
+    for i in range(10000):
         el = random.choice(Training_data)
         nn.train(el['inputs'], el['target'])
     
-    # print(nn.feedforward([1, 1]))
+    print('0 XOR 0 = {}'.format(nn.feedforward([0, 0])))
+    print('0 XOR 1 = {}'.format(nn.feedforward([0, 1])))
+    print('1 XOR 0 = {}'.format(nn.feedforward([1, 0])))
+    print('1 XOR 1 = {}'.format(nn.feedforward([1, 1])))
